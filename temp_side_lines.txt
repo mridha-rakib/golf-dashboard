@@ -1,0 +1,20 @@
+      )}
+
+      <div
+        className={`fixed top-0 left-0 h-full w-64 z-30 transform transition-all duration-300 ease-in-out bg-[#f7efe7] border-r border-[#e2d7cc] shadow-sm
+        ${isOpen ? "translate-x-0" : "-translate-x-full"}
+        ${collapsed ? "lg:w-20" : "lg:w-64"}
+        lg:translate-x-0 lg:relative lg:z-auto`}
+      >
+        <div className="pt-5 flex items-center justify-center relative px-4 lg:px-3">
+          <img
+            src={golflogo}
+            alt="golflogo"
+            className={`mx-auto transition-all duration-300 ${collapsed ? "w-12 h-12" : "w-20 h-20"}`}
+          />
+          {!collapsed && (
+            <span className="ml-3 text-lg font-semibold text-[#7a4322] hidden xl:block">
+              Club Docket
+            </span>
+          )}
+          <button
