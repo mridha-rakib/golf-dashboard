@@ -1,44 +1,77 @@
 // src/App.js
-import React from "react";
+import React, { Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 // import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import PublicRoute from "./routes/PublicRoute";
 import DashboardLayout from "./components/layout/DashboardLayout/DashboardLayout";
 
-// Auth Pages
-import Login from "./pages/Auth/Login";
-import Signup from "./pages/Auth/Signup";
-import VerifyOtp from "./pages/Auth/VerifyOtp";
-import SetPassword from "./pages/Auth/SetNewPassword";
+// Auth Pages (lazy)
+const Login = React.lazy(() => import("./pages/Auth/Login"));
+const Signup = React.lazy(() => import("./pages/Auth/Signup"));
+const VerifyOtp = React.lazy(() => import("./pages/Auth/VerifyOtp"));
+const SetPassword = React.lazy(() => import("./pages/Auth/SetNewPassword"));
+const ForgetPassword = React.lazy(() => import("./pages/Auth/ForgetPassword"));
+const Successful = React.lazy(() => import("./pages/Auth/Successful"));
 
-// Dashboard Pages
-import Dashboard from "./pages/Dashboard/Dashboard";
-import ForgetPassword from "./pages/Auth/ForgetPassword";
-import Successful from "./pages/Auth/Successful";
-import CourseDataManagement from "./pages/Course-data-management/CourseDataManagement";
-import Analytics from "./pages/Analytics/Analytics";
-import UserManagement from "./pages/UserManagement/UserManagement";
-import ContentModeration from "./pages/ContentModeration/ContentModeration";
-import GameAndEventManagement from "./pages/Game-and-event-management/GameAndEventManagement";
-import ChannelManagement from "./pages/ChannelManagement/ChannelManagement";
-import ViewCourseData from "./pages/Course-data-management/ViewCourseData";
-import ViewUser from "./pages/UserManagement/ViewUser";
-import ViewAllEvent from "./pages/Game-and-event-management/ViewAllEvent";
-import EditEvent from "./pages/Game-and-event-management/EditEvent";
-import ReportedPost from "./pages/ContentModeration/ReportedPost";
-import ReportedProfile from "./pages/ContentModeration/ReportedProfile";
-import AllChannel from "./pages/ChannelManagement/AllChannel";
-import EditChannel from "./pages/ChannelManagement/EditChannel";
-import Profile from "./pages/Profile/Profile";
-import Bracket from "./pages/Game-and-event-management/Bracket";
-import Clubs from "./pages/Club/Clubs";
-import ClubProfile from "./pages/Club/ClubProfile";
+// Dashboard Pages (lazy)
+const Dashboard = React.lazy(() => import("./pages/Dashboard/Dashboard"));
+const CourseDataManagement = React.lazy(
+  () => import("./pages/Course-data-management/CourseDataManagement"),
+);
+const Analytics = React.lazy(() => import("./pages/Analytics/Analytics"));
+const UserManagement = React.lazy(
+  () => import("./pages/UserManagement/UserManagement"),
+);
+const ContentModeration = React.lazy(
+  () => import("./pages/ContentModeration/ContentModeration"),
+);
+const GameAndEventManagement = React.lazy(
+  () => import("./pages/Game-and-event-management/GameAndEventManagement"),
+);
+const ChannelManagement = React.lazy(
+  () => import("./pages/ChannelManagement/ChannelManagement"),
+);
+const ViewCourseData = React.lazy(
+  () => import("./pages/Course-data-management/ViewCourseData"),
+);
+const ViewUser = React.lazy(() => import("./pages/UserManagement/ViewUser"));
+const ViewAllEvent = React.lazy(
+  () => import("./pages/Game-and-event-management/ViewAllEvent"),
+);
+const EditEvent = React.lazy(
+  () => import("./pages/Game-and-event-management/EditEvent"),
+);
+const ReportedPost = React.lazy(
+  () => import("./pages/ContentModeration/ReportedPost"),
+);
+const ReportedProfile = React.lazy(
+  () => import("./pages/ContentModeration/ReportedProfile"),
+);
+const AllChannel = React.lazy(
+  () => import("./pages/ChannelManagement/AllChannel"),
+);
+const EditChannel = React.lazy(
+  () => import("./pages/ChannelManagement/EditChannel"),
+);
+const Profile = React.lazy(() => import("./pages/Profile/Profile"));
+const Bracket = React.lazy(
+  () => import("./pages/Game-and-event-management/Bracket"),
+);
+const Clubs = React.lazy(() => import("./pages/Club/Clubs"));
+const ClubProfile = React.lazy(() => import("./pages/Club/ClubProfile"));
 
 function App() {
   return (
     <Router>
       {/* <AuthProvider> */}
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center text-sm text-gray-500">
+            Loading...
+          </div>
+        }
+      >
         <Routes>
           {/* Public Routes */}
           <Route
@@ -139,6 +172,7 @@ function App() {
           <Route path="clubs/:id" element={<ClubProfile />} />
           </Route>
         </Routes>
+      </Suspense>
       {/* </AuthProvider> */}
     </Router>
   );
