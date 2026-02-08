@@ -29,7 +29,6 @@ const Sidebar = () => {
     { name: "User Management", path: "/user-management", roles: ["admin", "super_admin"] },
     { name: "Channel Management", path: "/channel-management", roles: ["admin", "super_admin"] },
     { name: "Game & Event Management", path: "/game-event-management", roles: ["golf_club", "admin", "super_admin"] },
-    { name: "Content Moderation", path: "/content-moderation", roles: ["admin", "super_admin"] },
     { name: "Clubs", path: "/clubs", roles: ["golf_club", "admin", "super_admin"] },
   ];
 

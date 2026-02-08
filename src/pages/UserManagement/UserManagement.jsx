@@ -4,23 +4,17 @@ import {
     ViewIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ConfirmationModal from "../../components/ui/ConfirmationModal";
 import { Pagination } from "../../components/ui/Pagination";
-import { dummyUsers } from "../../constants/users";
+import { deleteClub, listClubs, listGolfers } from "../../services/clubService";
+import { deleteUser, updateUserStatus } from "../../services/userService";
 
 export default function UserManagement() {
-  const [users, setUsers] = useState(
-    dummyUsers.map((user, index) => ({
-      _id: user.id || `user-${index + 1}`,
-      fullName: user.name,
-      clubName: user.clubName,
-      status: user.status,
-      role: user.role || "golfer",
-      isActive: user.status !== "Banned",
-    }))
-  );
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showBanModal, setShowBanModal] = useState(false);
@@ -29,18 +23,77 @@ export default function UserManagement() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const usersPerPage = 8;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
+  useEffect(() => {
+    let alive = true;
+
+    const loadUsers = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [golfers, clubs] = await Promise.all([
+          listGolfers(),
+          listClubs(),
+        ]);
+
+        if (!alive) return;
+
+        const mappedGolfers = (golfers ?? []).map((user) => {
+          const statusRaw = String(user?.accountStatus || "").toLowerCase();
+          const isActive = statusRaw === "active";
+          return {
+            _id: user?._id,
+            fullName:
+              user?.fullName || user?.userName || user?.email || "Unknown",
+            clubName: user?.clubName || "N/A",
+            status: isActive ? "Active" : "Banned",
+            role: user?.role || "golfer",
+            isActive,
+          };
+        });
+
+        const mappedClubs = (clubs ?? []).map((club) => ({
+          _id: club?.clubUserId || club?._id,
+          fullName: club?.name || "Unknown Club",
+          clubName: club?.name || "Unknown Club",
+          status: "Active",
+          role: "golf_club",
+          isActive: true,
+          clubId: club?._id,
+        }));
+
+        setUsers([...mappedGolfers, ...mappedClubs]);
+      } catch (err) {
+        if (!alive) return;
+        const message = err?.message || "Failed to load users";
+        setError(message);
+        setUsers([]);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
+
+    loadUsers();
+    return () => {
+      alive = false;
+    };
+  }, []);
   // ✅ Update search filter to check clubName instead of email
-const filteredUsers = users?.filter((user) => {
-  const matchesSearch =
-    user?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user?.clubName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user?._id?.toLowerCase().includes(searchQuery.toLowerCase()); // if using MongoDB _id
+  const filteredUsers = users?.filter((user) => {
+    const matchesSearch =
+      user?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user?.clubName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user?._id?.toLowerCase().includes(searchQuery.toLowerCase()); // if using MongoDB _id
 
-  const matchesStatus =
-    statusFilter === "All" || user?.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "All" || user?.status === statusFilter;
 
-  return matchesSearch && matchesStatus;
-});
+    return matchesSearch && matchesStatus;
+  });
 
 
   const totalUsers = filteredUsers.length;
@@ -52,6 +105,56 @@ const filteredUsers = users?.filter((user) => {
 
   const handleViewUser = (user) => {
     navigate(`view/${user._id}`);
+  };
+
+  const handleToggleBan = async () => {
+    if (!userToAction) return;
+    setError(null);
+    const nextStatus =
+      userToAction.status === "Active" ? "suspended" : "active";
+    try {
+      await updateUserStatus(userToAction._id, nextStatus);
+      setUsers((prevUsers) =>
+        prevUsers.map((user) =>
+          user._id === userToAction._id
+            ? {
+                ...user,
+                status: nextStatus === "active" ? "Active" : "Banned",
+                isActive: nextStatus === "active",
+              }
+            : user,
+        ),
+      );
+      setShowBanModal(false);
+      setUserToAction(null);
+    } catch (err) {
+      const message = err?.message || "Unable to update status";
+      setError(message);
+      setShowBanModal(false);
+      setUserToAction(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!userToAction) return;
+    setError(null);
+    try {
+      if (userToAction.role === "golf_club" && userToAction.clubId) {
+        await deleteClub(userToAction.clubId);
+      } else {
+        await deleteUser(userToAction._id);
+      }
+      setUsers((prevUsers) =>
+        prevUsers.filter((user) => user._id !== userToAction._id),
+      );
+      setShowDeleteModal(false);
+      setUserToAction(null);
+    } catch (err) {
+      const message = err?.message || "Unable to delete user";
+      setError(message);
+      setShowDeleteModal(false);
+      setUserToAction(null);
+    }
   };
 
   return (
@@ -84,6 +187,13 @@ const filteredUsers = users?.filter((user) => {
           </div>
         </div>
       </div>
+
+      {loading && (
+        <div className="text-sm text-gray-500 mb-4">Loading users...</div>
+      )}
+      {error && (
+        <div className="text-sm text-red-600 mb-4">{error}</div>
+      )}
 
       {/* Desktop Table */}
       <div className="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -247,15 +357,7 @@ const filteredUsers = users?.filter((user) => {
             setShowDeleteModal(false);
             setUserToAction(null);
           }}
-          onConfirm={() => {
-            if (userToAction) {
-              setUsers((prevUsers) =>
-                prevUsers.filter((user) => user._id !== userToAction._id)
-              );
-            }
-            setShowDeleteModal(false);
-            setUserToAction(null);
-          }}
+          onConfirm={handleDelete}
           title="Delete User"
           option1="Delete User"
           option2="Cancel"
@@ -268,19 +370,7 @@ const filteredUsers = users?.filter((user) => {
             setShowBanModal(false);
             setUserToAction(null);
           }}
-          onConfirm={() => {
-            if (userToAction) {
-              setUsers((prevUsers) =>
-                prevUsers.map((user) =>
-                  user._id === userToAction._id
-                    ? { ...user, status: user.status === "Active" ? "Banned" : "Active" }
-                    : user
-                )
-              );
-            }
-            setShowBanModal(false);
-            setUserToAction(null);
-          }}
+          onConfirm={handleToggleBan}
           title={userToAction?.status === "Active" ? "Ban User" : "Unban User"}
           option1={userToAction?.status === "Active" ? "Ban User" : "Unban User"}
           option2="Cancel"

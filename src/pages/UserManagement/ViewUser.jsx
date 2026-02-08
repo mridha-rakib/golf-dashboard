@@ -1,31 +1,137 @@
 import { Delete02Icon, Flag01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ConfirmationModal from "../../components/ui/ConfirmationModal";
-import { dummyUsers } from "../../constants/users";
+import { deleteClub, listClubs, listGolfers } from "../../services/clubService";
+import { deleteUser, updateUserStatus } from "../../services/userService";
 const ViewUser = () => {
   const { id } = useParams();
-  const user = dummyUsers.find((item) => String(item.id) === String(id));
   const navigate = useNavigate();
   const [isBanned, setIsBanned] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showBanModal, setShowBanModal] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
+  useEffect(() => {
+    let alive = true;
 
-  const handleDeleteUser = (userToDelete) => {
-    console.log(`User ${userToDelete.fullName} deleted`);
-    navigate("/user-management");
+    const loadUser = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [golfers, clubs] = await Promise.all([
+          listGolfers(),
+          listClubs(),
+        ]);
+
+        if (!alive) return;
+
+        const mappedGolfers = (golfers ?? []).map((golfer) => {
+          const statusRaw = String(golfer?.accountStatus || "").toLowerCase();
+          const isActive = statusRaw === "active";
+          return {
+            _id: golfer?._id,
+            fullName:
+              golfer?.fullName || golfer?.userName || golfer?.email || "Unknown",
+            email: golfer?.email || "N/A",
+            bio: golfer?.bio || "N/A",
+            address: golfer?.address || "N/A",
+            role: golfer?.role || "golfer",
+            status: isActive ? "Active" : "Banned",
+            isActive,
+            accountStatus: golfer?.accountStatus,
+            profileImageUrl: golfer?.profileImageUrl,
+            coverImageUrl: golfer?.coverImageUrl,
+            userName: golfer?.userName,
+            phoneNumber: golfer?.phoneNumber,
+          };
+        });
+
+        const mappedClubs = (clubs ?? []).map((club) => ({
+          _id: club?.clubUserId || club?._id,
+          clubId: club?._id,
+          fullName: club?.name || "Unknown Club",
+          email: club?.clubEmail || "N/A",
+          bio: "N/A",
+          address: club?.address || "N/A",
+          role: "golf_club",
+          status: "Active",
+          isActive: true,
+          accountStatus: "active",
+          profileImageUrl: club?.profileImageUrl || null,
+          coverImageUrl: club?.coverImageUrl || null,
+          userName: club?.name || "N/A",
+          phoneNumber: "N/A",
+          ghinNumber: club?.ghinNumber || "N/A",
+          clubName: club?.name || "N/A",
+          country: club?.country || "N/A",
+          state: club?.city || "N/A",
+        }));
+
+        const allUsers = [...mappedGolfers, ...mappedClubs];
+        const found = allUsers.find((item) => String(item._id) === String(id));
+
+        setUser(found || null);
+        setIsBanned(found?.status === "Banned");
+      } catch (err) {
+        if (!alive) return;
+        const message = err?.message || "Failed to load user";
+        setError(message);
+        setUser(null);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
+
+    loadUser();
+    return () => {
+      alive = false;
+    };
+  }, [id]);
+
+  const handleDeleteUser = async (userToDelete) => {
+    if (!userToDelete) return;
+    setError(null);
+    try {
+      if (userToDelete.role === "golf_club" && userToDelete.clubId) {
+        await deleteClub(userToDelete.clubId);
+      } else {
+        await deleteUser(userToDelete._id);
+      }
+      navigate("/user-management");
+    } catch (err) {
+      const message = err?.message || "Failed to delete user";
+      setError(message);
+    }
   };
 
-  const handleBanUser = (userToBan, newBanStatus) => {
-    setIsBanned(newBanStatus);
-    console.log(
-      `User ${userToBan.fullName} status ${newBanStatus ? "Banned" : "Active"}`
-    );
+  const handleBanUser = async (userToBan, newBanStatus) => {
+    if (!userToBan) return;
+    setError(null);
+    try {
+      const nextStatus = newBanStatus ? "suspended" : "active";
+      await updateUserStatus(userToBan._id, nextStatus);
+      setUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: newBanStatus ? "Banned" : "Active",
+              isActive: !newBanStatus,
+              accountStatus: nextStatus,
+            }
+          : prev,
+      );
+      setIsBanned(newBanStatus);
+    } catch (err) {
+      const message = err?.message || "Failed to update status";
+      setError(message);
+    }
   };
 
-  if (!user) {
+  if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         Loading...
@@ -33,15 +139,32 @@ const ViewUser = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex justify-center items-center min-h-screen text-red-600">
+        {error}
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        User not found.
+      </div>
+    );
+  }
+
   const userInfo = {
-    fullName: user.name || "N/A",
-    username: user.id || "N/A",
+    fullName: user.fullName || "N/A",
+    username: user.userName || user._id || "N/A",
     email: user.email || "N/A",
     bio: user.bio || "N/A",
     dateOfBirth: user.dateOfBirth || "N/A",
     gender: user.gender || "N/A",
     location: user.location || "N/A",
     avatar:
+      user.profileImageUrl ||
       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
     isActive: user.status === "Banned" ? "Banned" : "Active",
     country: user.country || "N/A",

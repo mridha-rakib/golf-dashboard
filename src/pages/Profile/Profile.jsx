@@ -22,6 +22,7 @@ const Profile = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === "email") return;
     setTempProfile((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -124,13 +125,18 @@ const Profile = () => {
         <div className="w-full md:w-[48%] border-b border-[#D8D4E0]">
           <label className="block text-[18px] font-semibold text-gray-700 mb-1">Email</label>
           {isEditing ? (
-            <input
-              type="email"
-              name="email"
-              value={tempProfile.email}
-              onChange={handleChange}
-              className="w-full border px-3 py-2 rounded-md"
-            />
+            <div className="space-y-2">
+              <input
+                type="email"
+                name="email"
+                value={tempProfile.email}
+                onChange={handleChange}
+                disabled
+                readOnly
+                className="w-full border px-3 py-2 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
+              />
+              <p className="text-xs text-gray-500">Email cannot be changed.</p>
+            </div>
           ) : (
             <a href={`mailto:${tempProfile?.email}`} className="text-blue-600 hover:underline">
               {tempProfile?.email}

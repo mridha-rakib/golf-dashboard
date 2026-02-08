@@ -1,5 +1,5 @@
 // src/components/layout/Topbar/Topbar.jsx
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Notification01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useNavigate } from "react-router-dom";
@@ -12,14 +12,47 @@ const Topbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const user = useAuthStore((s) => s.user);
+  const hydrateProfile = useAuthStore((s) => s.hydrateProfile);
   const logout = useAuthStore((s) => s.logout);
   const notifications = [];
+  const [imageError, setImageError] = useState(false);
 
   const handleLogout = async () => {
     logout();
     navigate("/login");
   };
   const unreadCount = notifications?.filter((n) => !n.read).length;
+
+  useEffect(() => {
+    hydrateProfile?.().catch(() => {});
+  }, [hydrateProfile]);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [user?.profileImage, user?.profileImageUrl, user?.avatarUrl]);
+
+  const profileImageRaw =
+    user?.profileImage ||
+    user?.profileImageUrl ||
+    user?.avatarUrl ||
+    "";
+  const apiBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+  const apiOrigin = apiBase.replace(/\/api\/v1$/i, "");
+  const profileImage = useMemo(() => {
+    if (!profileImageRaw) return "";
+    if (/^https?:\/\//i.test(profileImageRaw)) return profileImageRaw;
+    if (!apiOrigin) return profileImageRaw;
+    if (profileImageRaw.startsWith("/")) {
+      return `${apiOrigin}${profileImageRaw}`;
+    }
+    return `${apiOrigin}/${profileImageRaw}`;
+  }, [profileImageRaw, apiOrigin]);
+
+  const showImage = Boolean(profileImage) && !imageError;
+  const displayName =
+    user?.fullName || user?.userName || user?.email || "Admin";
+  const initials =
+    displayName?.trim()?.charAt(0)?.toUpperCase() || "A";
 
   return (
     <div className="bg-white py-7 px-4 sm:px-6 relative ">
@@ -80,16 +113,24 @@ const Topbar = () => {
               setIsNotificationOpen(false);
             }}
           >
-            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full flex items-center justify-center text-white font-medium">
-              <img
-                src={user?.profileImage || userdummy}
-                alt="User"
-                className="rounded-full object-cover h-full w-full"
-              />
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full flex items-center justify-center text-white font-medium bg-[#9D4C1D] overflow-hidden">
+              {showImage ? (
+                <img
+                  src={profileImage}
+                  alt={displayName}
+                  className="rounded-full object-cover h-full w-full"
+                  onError={(e) => {
+                    e.currentTarget.src = userdummy;
+                    setImageError(true);
+                  }}
+                />
+              ) : (
+                <span className="text-sm sm:text-base">{initials}</span>
+              )}
             </div>
             <div className="hidden md:block text-left">
               <p className="text-sm font-medium text-gray-900">
-                {user?.fullName || "Admin"}
+                {displayName}
               </p>
               <p className="text-xs text-gray-500">{user?.role || "admin"}</p>
             </div>

@@ -1,70 +1,161 @@
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import UserMetrics from "../../components/common/UserMatrics";
-import { clubs as clubData } from "../../constants/clubs";
-import { userMetrics } from "../../constants/userMatrics";
-import { dummyUsers } from "../../constants/users";
+import { listClubs, listGolfers } from "../../services/clubService";
 
 const Dashboard = () => {
-  const userMetricsData = userMetrics;
-  const [newClubName, setNewClubName] = useState("");
-  const [clubs, setClubs] = useState(clubData || []);
+  const [clubs, setClubs] = useState([]);
+  const [golfers, setGolfers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [pageError, setPageError] = useState(null);
 
-  const totalGolfers = dummyUsers.filter((user) => user.role !== "golf_club").length;
-  const totalClubs = dummyUsers.filter((user) => user.role === "golf_club").length;
-  const activeUsers = dummyUsers.filter((user) => user.status !== "Banned").length;
-  const activeGolfers = dummyUsers.filter(
-    (user) => user.role !== "golf_club" && user.status !== "Banned"
-  ).length;
-  const activeClubs = dummyUsers.filter(
-    (user) => user.role === "golf_club" && user.status !== "Banned"
-  ).length;
+  useEffect(() => {
+    let alive = true;
+    const loadDashboard = async () => {
+      setLoading(true);
+      setPageError(null);
+      try {
+        const [clubList, golferList] = await Promise.all([
+          listClubs(),
+          listGolfers(),
+        ]);
+        if (!alive) return;
+        setClubs(clubList ?? []);
+        setGolfers(golferList ?? []);
+      } catch (err) {
+        if (!alive) return;
+        const message = err?.message || "Failed to load dashboard data";
+        setPageError(message);
+        setClubs([]);
+        setGolfers([]);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
+
+    loadDashboard();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const metrics = useMemo(() => {
+    const totalGolfers = golfers.length;
+    const totalClubs = clubs.length;
+    const activeGolfers = golfers.filter(
+      (user) => String(user?.accountStatus || "").toLowerCase() === "active",
+    ).length;
+    const activeClubs = totalClubs;
+    const activeUsers = activeGolfers + activeClubs;
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const newClubsThisMonth = clubs.filter((club) => {
+      const createdAt = club?.createdAt ? new Date(club.createdAt) : null;
+      return createdAt && createdAt >= startOfMonth;
+    }).length;
+
+    return {
+      totalGolfers,
+      totalClubs,
+      activeGolfers,
+      activeClubs,
+      activeUsers,
+      newClubsThisMonth,
+    };
+  }, [clubs, golfers]);
+
+  const buildRegistrationMetrics = (items) => {
+    const dates = (items ?? [])
+      .map((item) => new Date(item?.createdAt))
+      .filter((date) => !Number.isNaN(date.getTime()));
+
+    const now = new Date();
+    const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - (4 - i));
+    const yearly = years.map((year) => ({
+      year,
+      newUsers: dates.filter((d) => d.getFullYear() === year).length,
+    }));
+
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
+      return date;
+    });
+    const monthly = months.map((date) => ({
+      month: date.toLocaleString("en-US", { month: "short" }),
+      newUsers: dates.filter(
+        (d) =>
+          d.getFullYear() === date.getFullYear() &&
+          d.getMonth() === date.getMonth(),
+      ).length,
+    }));
+
+    const weeks = Array.from({ length: 8 }, (_, i) => {
+      const start = new Date(now);
+      start.setHours(0, 0, 0, 0);
+      start.setDate(start.getDate() - (7 - i) * 7);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 7);
+      return { start, end, label: `Week ${i + 1}` };
+    });
+    const weekly = weeks.map((range) => ({
+      week: range.label,
+      newUsers: dates.filter(
+        (d) => d >= range.start && d < range.end,
+      ).length,
+    }));
+
+    return { yearly, monthly, weekly };
+  };
+
+  const userMetricsData = useMemo(() => {
+    return buildRegistrationMetrics([...clubs, ...golfers]);
+  }, [clubs, golfers]);
 
   const metricCards = [
     {
       title: "Active Users",
-      value: activeUsers,
+      value: metrics.activeUsers,
       helper: "All roles",
     },
     {
       title: "Active Golfers",
-      value: activeGolfers,
+      value: metrics.activeGolfers,
       helper: "Verified golfers",
     },
     {
       title: "Active Golf Clubs",
-      value: activeClubs,
+      value: metrics.activeClubs,
       helper: "Verified clubs",
     },
     {
       title: "Total Golfers",
-      value: totalGolfers,
+      value: metrics.totalGolfers,
       helper: "All registrations",
     },
     {
       title: "Total Golf Clubs",
-      value: totalClubs,
+      value: metrics.totalClubs,
       helper: "All registrations",
     },
     {
       title: "New Clubs This Month",
-      value: Math.max(1, Math.floor(totalClubs / 3)),
-      helper: "Simulated",
+      value: metrics.newClubsThisMonth,
+      helper: "This month",
     },
   ];
 
-  const handleCreateClub = (e) => {
-    e.preventDefault();
-    if (!newClubName.trim()) return;
-    setClubs((prev) => [
-      {
-        clubname: newClubName.trim(),
-        members: [],
-      },
-      ...prev,
-    ]);
-    setNewClubName("");
-  };
+  const newestClubs = useMemo(() => {
+    return [...clubs]
+      .filter((club) => club?.name || club?.clubname)
+      .sort((a, b) => {
+        const aDate = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bDate = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bDate - aDate;
+      })
+      .slice(0, 5);
+  }, [clubs]);
+
 
   return (
     <div className="w-full">
@@ -74,6 +165,13 @@ const Dashboard = () => {
           Track active members, registrations, and club creation at a glance.
         </p>
       </div>
+
+      {loading && (
+        <div className="text-sm text-gray-500 mb-6">Loading dashboard data...</div>
+      )}
+      {pageError && (
+        <div className="text-sm text-red-600 mb-6">{pageError}</div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <section className="lg:col-span-8 space-y-6">
@@ -101,42 +199,29 @@ const Dashboard = () => {
         </section>
 
         <aside className="lg:col-span-4 space-y-6">
-          <div className="bg-gradient-to-br from-[#FFF7F2] via-white to-[#F5EDE8] border border-[#F1E7E0] rounded-2xl p-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Create New Golf Club</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Add newly registered golf clubs and keep them active.
-            </p>
-            <form onSubmit={handleCreateClub} className="space-y-3">
-              <input
-                type="text"
-                value={newClubName}
-                onChange={(e) => setNewClubName(e.target.value)}
-                placeholder="Club name"
-                className="w-full rounded-xl border border-[#E7D9CF] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#9D4C1D]"
-              />
-              <button
-                type="submit"
-                className="w-full rounded-xl bg-[#9D4C1D] text-white py-2 font-semibold hover:bg-[#7a3814] transition"
-              >
-                Create Club
-              </button>
-            </form>
-          </div>
-
           <div className="bg-white border border-[#F1E7E0] rounded-2xl p-6">
             <h4 className="text-lg font-semibold text-gray-900 mb-4">Newest Clubs</h4>
             <div className="space-y-3">
-              {clubs.slice(0, 5).map((club, index) => (
-                <div key={`${club.clubname}-${index}`} className="flex items-center justify-between">
+              {newestClubs.map((club, index) => (
+                <div key={`${club.name || club.clubname}-${index}`} className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-gray-800">{club.clubname}</p>
-                    <p className="text-xs text-gray-500">Pending activation</p>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {club.name || club.clubname}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {club?.createdAt
+                        ? `Created ${new Date(club.createdAt).toLocaleDateString()}`
+                        : "Pending activation"}
+                    </p>
                   </div>
                   <button className="text-xs px-3 py-1 rounded-full bg-[#F5EDE8] text-[#9D4C1D] font-semibold">
                     Activate
                   </button>
                 </div>
               ))}
+              {!newestClubs.length && (
+                <div className="text-sm text-gray-500">No clubs found.</div>
+              )}
             </div>
           </div>
         </aside>

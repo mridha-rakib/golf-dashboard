@@ -11,6 +11,10 @@ export const API_PATHS = {
     coverImage: (clubId) => `/golf-clubs/${clubId}/cover-image`,
     manager: (clubId) => `/golf-clubs/${clubId}/manager`,
   },
+  users: {
+    updateStatus: (userId) => `/user/${userId}/status`,
+    delete: (userId) => `/user/${userId}`,
+  },
 };
 
 export default API_PATHS;
