@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import golflogo from "../../assets/logos/glfLogo.svg";
 
 import { toast } from "react-toastify";
+import { formatErrorMessage } from "../../lib/httpError";
 
 function ForgetPassword() {
   
@@ -26,7 +27,12 @@ function ForgetPassword() {
       navigate("/verify-otp", { state: { email } });
     } catch (err) {
       console.error("Forgot password error:", err);
-      toast.error(err.data?.message || "Failed to send reset code. Please try again.");
+      toast.error(
+        formatErrorMessage(
+          err,
+          "Failed to send reset code. Please try again.",
+        ),
+      );
     } finally {
       setIsLoading(false);
     }

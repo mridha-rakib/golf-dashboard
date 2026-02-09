@@ -6,6 +6,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import ErrorNotice from "../../components/common/ErrorNotice";
 import ConfirmationModal from "../../components/ui/ConfirmationModal";
 import { Pagination } from "../../components/ui/Pagination";
 import { deleteClub, listClubs, listGolfers } from "../../services/clubService";
@@ -69,8 +70,7 @@ export default function UserManagement() {
         setUsers([...mappedGolfers, ...mappedClubs]);
       } catch (err) {
         if (!alive) return;
-        const message = err?.message || "Failed to load users";
-        setError(message);
+        setError(err);
         setUsers([]);
       } finally {
         if (alive) setLoading(false);
@@ -128,8 +128,7 @@ export default function UserManagement() {
       setShowBanModal(false);
       setUserToAction(null);
     } catch (err) {
-      const message = err?.message || "Unable to update status";
-      setError(message);
+      setError(err);
       setShowBanModal(false);
       setUserToAction(null);
     }
@@ -150,8 +149,7 @@ export default function UserManagement() {
       setShowDeleteModal(false);
       setUserToAction(null);
     } catch (err) {
-      const message = err?.message || "Unable to delete user";
-      setError(message);
+      setError(err);
       setShowDeleteModal(false);
       setUserToAction(null);
     }
@@ -191,9 +189,7 @@ export default function UserManagement() {
       {loading && (
         <div className="text-sm text-gray-500 mb-4">Loading users...</div>
       )}
-      {error && (
-        <div className="text-sm text-red-600 mb-4">{error}</div>
-      )}
+      {error && <ErrorNotice error={error} className="mb-4" />}
 
       {/* Desktop Table */}
       <div className="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">

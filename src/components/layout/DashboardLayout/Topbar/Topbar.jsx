@@ -1,31 +1,52 @@
 // src/components/layout/Topbar/Topbar.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Notification01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../../../stores/authStore";
+import { listNotifications } from "../../../../services/notificationService";
 import userdummy from "../../../../assets/images/user-dummy.png";
 
 const Topbar = () => {
   const navigate = useNavigate();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState("");
 
   const user = useAuthStore((s) => s.user);
   const hydrateProfile = useAuthStore((s) => s.hydrateProfile);
   const logout = useAuthStore((s) => s.logout);
-  const notifications = [];
   const [imageError, setImageError] = useState(false);
 
   const handleLogout = async () => {
     logout();
     navigate("/login");
   };
-  const unreadCount = notifications?.filter((n) => !n.read).length;
+  const unreadCount = notifications?.filter((n) => !n.isRead).length;
+
+  const fetchNotifications = useCallback(async () => {
+    setNotificationsLoading(true);
+    setNotificationsError("");
+    try {
+      const result = await listNotifications({ page: 1, limit: 10 });
+      setNotifications(Array.isArray(result.data) ? result.data : []);
+    } catch (error) {
+      setNotifications([]);
+      setNotificationsError("Failed to load notifications.");
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     hydrateProfile?.().catch(() => {});
   }, [hydrateProfile]);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   useEffect(() => {
     setImageError(false);
@@ -53,6 +74,12 @@ const Topbar = () => {
     user?.fullName || user?.userName || user?.email || "Admin";
   const initials =
     displayName?.trim()?.charAt(0)?.toUpperCase() || "A";
+  const formatNotificationTime = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleString();
+  };
 
   return (
     <div className="bg-white py-7 px-4 sm:px-6 relative ">
@@ -62,8 +89,12 @@ const Topbar = () => {
           <button
             className="p-1 sm:p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none"
             onClick={() => {
-              setIsNotificationOpen(!isNotificationOpen);
+              const nextOpen = !isNotificationOpen;
+              setIsNotificationOpen(nextOpen);
               setIsProfileOpen(false);
+              if (nextOpen) {
+                fetchNotifications();
+              }
             }}
           >
             <HugeiconsIcon icon={Notification01Icon} className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -80,19 +111,29 @@ const Topbar = () => {
                 <h3 className="text-sm font-medium text-gray-700">Notifications</h3>
               </div>
               <div className="max-h-60 overflow-y-auto">
-                {notifications?.length === 0 ? (
+                {notificationsLoading ? (
+                  <div className="py-4 px-4 text-center text-sm text-gray-500">
+                    Loading notifications...
+                  </div>
+                ) : notificationsError ? (
+                  <div className="py-4 px-4 text-center text-sm text-gray-500">
+                    {notificationsError}
+                  </div>
+                ) : notifications?.length === 0 ? (
                   <div className="py-4 px-4 text-center text-sm text-gray-500">
                     No notifications
                   </div>
                 ) : (
                   notifications?.map(notification => (
-                    <div key={notification.id} className={`border-b border-gray-100 ${notification.read ? 'bg-white' : 'bg-blue-50'}`}>
+                    <div key={notification._id} className={`border-b border-gray-100 ${notification.isRead ? 'bg-white' : 'bg-blue-50'}`}>
                       <div className="py-3 px-4 flex items-start">
                         <div className="ml-2 sm:ml-3 flex-1">
                           <p className="text-sm font-medium text-gray-900">{notification.message}</p>
-                          <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {formatNotificationTime(notification.createdAt)}
+                          </p>
                         </div>
-                        {!notification.read && (
+                        {!notification.isRead && (
                           <span className="h-2 w-2 mt-2 rounded-full bg-blue-500"></span>
                         )}
                       </div>

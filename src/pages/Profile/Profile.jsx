@@ -1,22 +1,67 @@
 import { PencilEdit02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import ErrorNotice from "../../components/common/ErrorNotice";
+import { useAuthStore } from "../../stores/authStore";
+import { uploadProfileImage } from "../../services/userService";
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempProfile, setTempProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState(null);
+  const user = useAuthStore((s) => s.user);
+  const hydrateProfile = useAuthStore((s) => s.hydrateProfile);
+
+  const normalizeProfile = (profile) => ({
+    fullName: profile?.fullName || profile?.userName || profile?.email || "Admin User",
+    email: profile?.email || "admin@example.com",
+    dob: profile?.dob || "",
+    gender: profile?.gender || "",
+    profileImage: profile?.profileImage || profile?.profileImageUrl || "",
+    profileImageUrl: profile?.profileImageUrl || profile?.profileImage || "",
+  });
+
   useEffect(() => {
-    const storedProfile = JSON.parse(localStorage.getItem("authUser") || "{}");
-    if (storedProfile) {
-      setTempProfile({
-        fullName: storedProfile.fullName || storedProfile.email || "Admin User",
-        email: storedProfile.email || "admin@example.com",
-        dob: storedProfile.dob || "",
-        gender: storedProfile.gender || "",
-        profileImage: storedProfile.profileImage || "",
-      });
-    }
-  }, []);
+    let alive = true;
+
+    const loadProfile = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const profile = user || (await hydrateProfile());
+        if (!alive) return;
+        if (profile) {
+          setTempProfile(normalizeProfile(profile));
+        } else {
+          setTempProfile(null);
+        }
+      } catch (err) {
+        if (!alive) return;
+        setError(err);
+        setTempProfile(null);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
+
+    loadProfile();
+    return () => {
+      alive = false;
+    };
+  }, [user?._id, user?.profileImageUrl, user?.profileImage, user?.fullName, user?.email, user?.userName]);
+
+  const apiBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+  const apiOrigin = apiBase.replace(/\/api\/v1$/i, "");
+  const resolvedProfileImage = useMemo(() => {
+    const raw = tempProfile?.profileImageUrl || tempProfile?.profileImage || "";
+    if (!raw) return "";
+    if (/^https?:\/\//i.test(raw)) return raw;
+    if (!apiOrigin) return raw;
+    if (raw.startsWith("/")) return `${apiOrigin}${raw}`;
+    return `${apiOrigin}/${raw}`;
+  }, [tempProfile?.profileImageUrl, tempProfile?.profileImage, apiOrigin]);
 
   const handleEdit = () => setIsEditing(true);
 
@@ -31,13 +76,28 @@ const Profile = () => {
     if (file) {
       const imageUrl = URL.createObjectURL(file);
       setTempProfile((prev) => ({ ...prev, profileImage: imageUrl, file }));
+      setUploading(true);
+      setError(null);
+      uploadProfileImage(file)
+        .then(async (updated) => {
+          setTempProfile((prev) => ({
+            ...prev,
+            profileImage: updated?.profileImageUrl || updated?.profileImage || imageUrl,
+            profileImageUrl: updated?.profileImageUrl || updated?.profileImage || "",
+          }));
+          await hydrateProfile?.().catch(() => {});
+        })
+        .catch((err) => {
+          setError(err);
+        })
+        .finally(() => {
+          setUploading(false);
+        });
     }
   };
 
   const handleSave = async () => {
     if (!tempProfile) return;
-
-    localStorage.setItem("authUser", JSON.stringify(tempProfile));
     setIsEditing(false);
   };
 
@@ -46,6 +106,10 @@ const Profile = () => {
     setTempProfile({ ...tempProfile });
   };
 
+  if (loading) return <div>Loading...</div>;
+  if (error) {
+    return <ErrorNotice error={error} />;
+  }
   if (!tempProfile) return <div>Loading...</div>;
 
   return (
@@ -86,17 +150,18 @@ const Profile = () => {
         <div className="flex flex-col gap-4 items-start">
           <img
             className="w-full max-w-xs h-auto md:w-[280px] md:h-[220px] object-cover rounded-lg border"
-            src={tempProfile?.profileImage || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face"}
+            src={resolvedProfileImage || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face"}
             alt="Avatar"
           />
           {isEditing && (
             <label className="cursor-pointer bg-[#9D4C1D] text-white px-3 py-2 rounded-lg">
-              Change Picture
+              {uploading ? "Uploading..." : "Change Picture"}
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
                 className="hidden"
+                disabled={uploading}
               />
             </label>
           )}

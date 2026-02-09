@@ -1,7 +1,7 @@
 // src/pages/auth/Login.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import extractErrorMessage from "../../lib/httpError";
+import { formatErrorMessage } from "../../lib/httpError";
 import { useAuthStore } from "../../stores/authStore";
 
 import bgImage from "../../assets/images/bg-image.jpg";
@@ -33,7 +33,12 @@ const Login = () => {
       await login(formData.email, formData.password);
       navigate("/");
     } catch (err) {
-      setError(extractErrorMessage(err, "Failed to sign in. Please check your credentials."));
+      setError(
+        formatErrorMessage(
+          err,
+          "Failed to sign in. Please check your credentials.",
+        ),
+      );
     }
   };
 

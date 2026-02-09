@@ -12,8 +12,12 @@ export const API_PATHS = {
     manager: (clubId) => `/golf-clubs/${clubId}/manager`,
   },
   users: {
+    profileImage: "/user/profile/image-upload",
     updateStatus: (userId) => `/user/${userId}/status`,
     delete: (userId) => `/user/${userId}`,
+  },
+  notifications: {
+    list: "/notifications",
   },
 };
 

@@ -13,7 +13,15 @@ export const deleteUser = async (userId) => {
   return res.data?.data ?? res.data;
 };
 
+export const uploadProfileImage = async (file) => {
+  const formData = new FormData();
+  formData.append("profileImage", file);
+  const res = await http.post(API_PATHS.users.profileImage, formData);
+  return res.data?.data ?? res.data;
+};
+
 export default {
   updateUserStatus,
   deleteUser,
+  uploadProfileImage,
 };

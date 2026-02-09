@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useParams } from "react-router-dom";
 import AssignModal from "./AssignModal";
+import ErrorNotice from "../../components/common/ErrorNotice";
 import { uploadClubCoverImage, uploadClubProfileImage } from "../../services/clubService";
 import { useClubStore } from "../../stores/clubStore";
+import { formatErrorMessage } from "../../lib/httpError";
 
 const ClubProfile = () => {
   const { id } = useParams();
@@ -106,7 +108,7 @@ const ClubProfile = () => {
   if (!localClub) {
     return (
       <div className="text-center py-10 text-red-500">
-        {error ? error : "Failed to load club profile"}
+        <ErrorNotice error={error || "Failed to load club profile"} />
       </div>
     );
   }
@@ -146,7 +148,7 @@ const ClubProfile = () => {
       }));
       toast.success("Cover image updated");
     } catch (err) {
-      toast.error(err?.message || "Failed to upload cover image");
+      toast.error(formatErrorMessage(err, "Failed to upload cover image"));
     } finally {
       setUploading((prev) => ({ ...prev, cover: false }));
     }
@@ -164,7 +166,7 @@ const ClubProfile = () => {
       }));
       toast.success("Profile image updated");
     } catch (err) {
-      toast.error(err?.message || "Failed to upload profile image");
+      toast.error(formatErrorMessage(err, "Failed to upload profile image"));
     } finally {
       setUploading((prev) => ({ ...prev, profile: false }));
     }
@@ -212,7 +214,7 @@ const ClubProfile = () => {
       toast.success("Club updated successfully");
       setEditMode(false);
     } catch (err) {
-      toast.error(err?.message || "Failed to update club details");
+      toast.error(formatErrorMessage(err, "Failed to update club details"));
     } finally {
       setSavingDetails(false);
     }
@@ -235,7 +237,7 @@ const ClubProfile = () => {
       }));
       toast.success("Manager assigned successfully and credentials emailed");
     } catch (err) {
-      toast.error(err?.message || "Failed to assign manager");
+      toast.error(formatErrorMessage(err, "Failed to assign manager"));
     }
   };
 

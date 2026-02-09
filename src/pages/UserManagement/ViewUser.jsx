@@ -2,6 +2,7 @@ import { Delete02Icon, Flag01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import ErrorNotice from "../../components/common/ErrorNotice";
 import ConfirmationModal from "../../components/ui/ConfirmationModal";
 import { deleteClub, listClubs, listGolfers } from "../../services/clubService";
 import { deleteUser, updateUserStatus } from "../../services/userService";
@@ -78,8 +79,7 @@ const ViewUser = () => {
         setIsBanned(found?.status === "Banned");
       } catch (err) {
         if (!alive) return;
-        const message = err?.message || "Failed to load user";
-        setError(message);
+        setError(err);
         setUser(null);
       } finally {
         if (alive) setLoading(false);
@@ -103,8 +103,7 @@ const ViewUser = () => {
       }
       navigate("/user-management");
     } catch (err) {
-      const message = err?.message || "Failed to delete user";
-      setError(message);
+      setError(err);
     }
   };
 
@@ -126,8 +125,7 @@ const ViewUser = () => {
       );
       setIsBanned(newBanStatus);
     } catch (err) {
-      const message = err?.message || "Failed to update status";
-      setError(message);
+      setError(err);
     }
   };
 
@@ -141,8 +139,8 @@ const ViewUser = () => {
 
   if (error) {
     return (
-      <div className="flex justify-center items-center min-h-screen text-red-600">
-        {error}
+      <div className="flex justify-center items-center min-h-screen">
+        <ErrorNotice error={error} />
       </div>
     );
   }

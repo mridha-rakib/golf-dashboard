@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import ErrorNotice from "../../components/common/ErrorNotice";
 import { useClubStore } from "../../stores/clubStore";
 import AddClubModal from "./AddClubModal";
 import AssignRolesModal from "./AssignRolesModal";
 import ClubTable from "./ClubTable";
 import confirmDialog from "../../utils/confirm";
+import { formatErrorMessage } from "../../lib/httpError";
 
 function Clubs() {
   const clubs = useClubStore((state) => state.clubs);
@@ -29,10 +31,10 @@ function Clubs() {
 
   useEffect(() => {
     fetchClubs().catch((err) =>
-      toast.error(err?.message || "Unable to load clubs")
+      toast.error(formatErrorMessage(err, "Unable to load clubs"))
     );
     fetchGolfers().catch((err) =>
-      toast.error(err?.message || "Unable to load golfers")
+      toast.error(formatErrorMessage(err, "Unable to load golfers"))
     );
   }, [fetchClubs, fetchGolfers]);
 
@@ -53,7 +55,7 @@ function Clubs() {
       await fetchClubRoles(clubId);
       setAssignModalOpen(true);
     } catch (err) {
-      toast.error(err?.message || "Unable to load club roles");
+      toast.error(formatErrorMessage(err, "Unable to load club roles"));
       setActiveClubId(null);
     } finally {
       setIsFetchingRoles(false);
@@ -73,7 +75,7 @@ function Clubs() {
       toast.success("Club roles updated");
       handleModalClose();
     } catch (err) {
-      toast.error(err?.message || "Unable to update club roles");
+      toast.error(formatErrorMessage(err, "Unable to update club roles"));
     } finally {
       setIsSaving(false);
     }
@@ -86,7 +88,7 @@ function Clubs() {
       toast.success("Club created successfully");
       setIsAddModalOpen(false);
     } catch (err) {
-      toast.error(err?.message || "Unable to create club");
+      toast.error(formatErrorMessage(err, "Unable to create club"));
     } finally {
       setIsCreatingClub(false);
     }
@@ -104,7 +106,7 @@ function Clubs() {
       await deleteClub(club._id);
       toast.success("Club deleted");
     } catch (err) {
-      toast.error(err?.message || "Unable to delete club");
+      toast.error(formatErrorMessage(err, "Unable to delete club"));
     } finally {
       setIsDeleting(false);
     }
@@ -127,11 +129,7 @@ function Clubs() {
         </p>
       </header>
 
-      {error && (
-        <p className="px-4 text-sm text-red-600">
-          {error || "Failed to load club data."}
-        </p>
-      )}
+      {error && <ErrorNotice error={error} className="mx-4" />}
 
       <div className="flex items-center justify-between px-4">
         <p className="text-sm uppercase tracking-wide text-gray-500">

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import golflogo from "../../assets/logos/glfLogo.svg";
+import { formatErrorMessage } from "../../lib/httpError";
 
 const VerifyOtp = () => {
   const [otp, setOtp] = useState(["", "", "", ""]);
@@ -82,7 +83,7 @@ console.log(email, otpValue);
       navigate("/set-password", { state: { email, resetCode: otpValue } });
     } catch (err) {
       console.error("Verify OTP error:", err);
-      setError(err.data?.message || "Invalid verification code");
+      setError(formatErrorMessage(err, "Invalid verification code"));
     } finally {
       setIsVerifying(false);
     }

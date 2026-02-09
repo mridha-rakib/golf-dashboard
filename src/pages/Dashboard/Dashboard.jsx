@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import UserMetrics from "../../components/common/UserMatrics";
+import ErrorNotice from "../../components/common/ErrorNotice";
 import { listClubs, listGolfers } from "../../services/clubService";
 
 const Dashboard = () => {
@@ -24,8 +25,7 @@ const Dashboard = () => {
         setGolfers(golferList ?? []);
       } catch (err) {
         if (!alive) return;
-        const message = err?.message || "Failed to load dashboard data";
-        setPageError(message);
+        setPageError(err);
         setClubs([]);
         setGolfers([]);
       } finally {
@@ -169,9 +169,7 @@ const Dashboard = () => {
       {loading && (
         <div className="text-sm text-gray-500 mb-6">Loading dashboard data...</div>
       )}
-      {pageError && (
-        <div className="text-sm text-red-600 mb-6">{pageError}</div>
-      )}
+      {pageError && <ErrorNotice error={pageError} className="mb-6" />}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <section className="lg:col-span-8 space-y-6">

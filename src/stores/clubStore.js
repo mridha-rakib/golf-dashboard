@@ -28,8 +28,7 @@ export const useClubStore = create(
         set({ clubs, loading: false });
         return clubs;
       } catch (err) {
-        const message = err?.message || "Failed to load clubs";
-        set({ error: message, loading: false });
+        set({ error: err, loading: false });
         throw err;
       }
     },
@@ -41,8 +40,7 @@ export const useClubStore = create(
         set({ golfers, loading: false });
         return golfers;
       } catch (err) {
-        const message = err?.message || "Failed to load golfers";
-        set({ error: message, loading: false });
+        set({ error: err, loading: false });
         throw err;
       }
     },
@@ -73,8 +71,7 @@ export const useClubStore = create(
         await get().fetchClubs();
         return updated;
       } catch (err) {
-        const message = err?.message || "Unable to update club";
-        set({ error: message });
+        set({ error: err });
         throw err;
       } finally {
         set({ loading: false });
@@ -88,8 +85,7 @@ export const useClubStore = create(
         await get().fetchClubs();
         return newClub;
       } catch (err) {
-        const message = err?.message || "Create club failed";
-        set({ error: message });
+        set({ error: err });
         throw err;
       } finally {
         set({ loading: false });
@@ -103,8 +99,7 @@ export const useClubStore = create(
         await get().fetchClubRoles(clubId);
         return response;
       } catch (err) {
-        const message = err?.message || "Unable to assign manager";
-        set({ error: message });
+        set({ error: err });
         throw err;
       } finally {
         set({ loading: false });
@@ -122,8 +117,7 @@ export const useClubStore = create(
           return { clubRoles: newRoles };
         });
       } catch (err) {
-        const message = err?.message || "Unable to delete club";
-        set({ error: message });
+        set({ error: err });
         throw err;
       } finally {
         set({ loading: false });
