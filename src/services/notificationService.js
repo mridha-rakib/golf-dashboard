@@ -13,6 +13,20 @@ export const listNotifications = async ({
   return { data, pagination };
 };
 
+export const updateNotificationsRead = async ({
+  notificationId,
+  notificationIds,
+  countOnly,
+} = {}) => {
+  const res = await http.patch(API_PATHS.notifications.list + "/read", {
+    notificationId,
+    notificationIds,
+    countOnly,
+  });
+  return res.data?.data ?? res.data;
+};
+
 export default {
   listNotifications,
+  updateNotificationsRead,
 };

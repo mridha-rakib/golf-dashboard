@@ -4,7 +4,10 @@ import { Notification01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../../../stores/authStore";
-import { listNotifications } from "../../../../services/notificationService";
+import {
+  listNotifications,
+  updateNotificationsRead,
+} from "../../../../services/notificationService";
 import userdummy from "../../../../assets/images/user-dummy.png";
 
 const Topbar = () => {
@@ -14,6 +17,7 @@ const Topbar = () => {
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsError, setNotificationsError] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const user = useAuthStore((s) => s.user);
   const hydrateProfile = useAuthStore((s) => s.hydrateProfile);
@@ -24,21 +28,69 @@ const Topbar = () => {
     logout();
     navigate("/login");
   };
-  const unreadCount = notifications?.filter((n) => !n.isRead).length;
-
   const fetchNotifications = useCallback(async () => {
     setNotificationsLoading(true);
     setNotificationsError("");
     try {
-      const result = await listNotifications({ page: 1, limit: 10 });
+      const [result, countResult] = await Promise.all([
+        listNotifications({ page: 1, limit: 10 }),
+        updateNotificationsRead({ countOnly: true }),
+      ]);
       setNotifications(Array.isArray(result.data) ? result.data : []);
+      if (countResult && typeof countResult.unreadCount === "number") {
+        setUnreadCount(countResult.unreadCount);
+      }
     } catch (error) {
       setNotifications([]);
       setNotificationsError("Failed to load notifications.");
+      setUnreadCount(0);
     } finally {
       setNotificationsLoading(false);
     }
   }, []);
+
+  const handleMarkRead = async (notificationId) => {
+    if (!notificationId) return;
+    try {
+      const result = await updateNotificationsRead({ notificationId });
+      setNotifications((prev) =>
+        prev.map((item) =>
+          item._id === notificationId ? { ...item, isRead: true } : item,
+        ),
+      );
+      if (typeof result?.unreadCount === "number") {
+        setUnreadCount(result.unreadCount);
+      } else {
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+    } catch {
+      // ignore errors for now
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    const unreadIds = notifications
+      .filter((n) => !n.isRead)
+      .map((n) => n._id);
+    if (unreadIds.length === 0) return;
+    try {
+      const result = await updateNotificationsRead({
+        notificationIds: unreadIds,
+      });
+      setNotifications((prev) =>
+        prev.map((item) =>
+          unreadIds.includes(item._id) ? { ...item, isRead: true } : item,
+        ),
+      );
+      if (typeof result?.unreadCount === "number") {
+        setUnreadCount(result.unreadCount);
+      } else {
+        setUnreadCount((prev) => Math.max(0, prev - unreadIds.length));
+      }
+    } catch {
+      // ignore errors for now
+    }
+  };
 
   useEffect(() => {
     hydrateProfile?.().catch(() => {});
@@ -109,6 +161,13 @@ const Topbar = () => {
             <div className="absolute right-0 mt-2 w-64 sm:w-80 bg-white rounded-md shadow-lg overflow-hidden z-10 border border-gray-200">
               <div className="py-2 px-4 bg-gray-100 border-b flex justify-between items-center">
                 <h3 className="text-sm font-medium text-gray-700">Notifications</h3>
+                <button
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  className="text-xs font-semibold text-[#9D4C1D] hover:underline"
+                >
+                  Mark all read
+                </button>
               </div>
               <div className="max-h-60 overflow-y-auto">
                 {notificationsLoading ? (
@@ -125,7 +184,12 @@ const Topbar = () => {
                   </div>
                 ) : (
                   notifications?.map(notification => (
-                    <div key={notification._id} className={`border-b border-gray-100 ${notification.isRead ? 'bg-white' : 'bg-blue-50'}`}>
+                    <button
+                      type="button"
+                      key={notification._id}
+                      onClick={() => handleMarkRead(notification._id)}
+                      className={`w-full text-left border-b border-gray-100 ${notification.isRead ? 'bg-white' : 'bg-blue-50'}`}
+                    >
                       <div className="py-3 px-4 flex items-start">
                         <div className="ml-2 sm:ml-3 flex-1">
                           <p className="text-sm font-medium text-gray-900">{notification.message}</p>
@@ -137,7 +201,7 @@ const Topbar = () => {
                           <span className="h-2 w-2 mt-2 rounded-full bg-blue-500"></span>
                         )}
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-// HITS POST /golf-clubs with { clubName, email, password }
+// HITS POST /golf-clubs with { clubName, email?, password }
 const AddClubModal = ({
   isOpen,
   onClose,
@@ -39,10 +39,10 @@ const AddClubModal = ({
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (!form.clubName || !form.email || !form.password) return;
+    if (!form.clubName || !form.password) return;
     onSubmit({
       clubName: form.clubName.trim(),
-      email: form.email.trim(),
+      email: form.email.trim() || undefined,
       password: form.password,
       address: form.address.trim(),
       managerIds: selectedManagerIds,
@@ -70,7 +70,7 @@ const AddClubModal = ({
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
         <h2 className="text-lg font-semibold">Add new club</h2>
         <p className="text-sm text-gray-500">
-          Provide the club name, login email and password that golfers will use.
+          Provide the club name and password. Email is optional.
         </p>
         <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
           <div>
@@ -87,14 +87,13 @@ const AddClubModal = ({
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold text-gray-600">
-              Club Email
+              Club Email (optional)
             </label>
             <input
               name="email"
               type="email"
               value={form.email}
               onChange={handleChange}
-              required
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
             />
           </div>
@@ -166,7 +165,7 @@ const AddClubModal = ({
             </div>
             <p className="text-[11px] text-gray-500">
               Managers are optional. Anyone you select will get the club login
-              (email + password) you set above.
+              credentials (username/email + password).
             </p>
           </div>
           <div className="flex justify-end gap-3">

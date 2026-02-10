@@ -81,7 +81,7 @@ const Login = () => {
                 Welcome Back!
               </h2>
               <p className="text-sm sm:text-base text-center">
-                To login, enter your email and password{" "}
+                To login, enter your email or username and password{" "}
               </p>
             </div>
             <form onSubmit={handleSubmit}>
@@ -98,14 +98,14 @@ const Login = () => {
                     htmlFor="email"
                     className="block text-sm font-medium mb-1"
                   >
-                    Email
+                    Email or Username
                   </label>
                   <input
                     name="email"
-                    type="email"
+                    type="text"
                     id="email"
                     value={formData.email}
-                    placeholder="Enter your email"
+                    placeholder="Enter your email or username"
                     onChange={handleChange}
                     className="w-full h-10 sm:h-12 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
                   />
