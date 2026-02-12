@@ -1,6 +1,11 @@
 import http from "../lib/http";
 import API_PATHS from "../lib/apiPaths";
 
+export const getUser = async (userId) => {
+  const res = await http.get(API_PATHS.users.get(userId));
+  return res.data?.data ?? res.data;
+};
+
 export const updateUserStatus = async (userId, accountStatus) => {
   const res = await http.patch(API_PATHS.users.updateStatus(userId), {
     accountStatus,
@@ -21,6 +26,7 @@ export const uploadProfileImage = async (file) => {
 };
 
 export default {
+  getUser,
   updateUserStatus,
   deleteUser,
   uploadProfileImage,

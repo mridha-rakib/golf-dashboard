@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ErrorNotice from "../../components/common/ErrorNotice";
 import ConfirmationModal from "../../components/ui/ConfirmationModal";
-import { deleteClub, listClubs, listGolfers } from "../../services/clubService";
-import { deleteUser, updateUserStatus } from "../../services/userService";
+import { deleteClub, listClubs } from "../../services/clubService";
+import { deleteUser, updateUserStatus, getUser } from "../../services/userService";
 const ViewUser = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -23,60 +23,41 @@ const ViewUser = () => {
       setLoading(true);
       setError(null);
       try {
-        const [golfers, clubs] = await Promise.all([
-          listGolfers(),
+        const [userResponse, clubs] = await Promise.all([
+          getUser(id),
           listClubs(),
         ]);
 
         if (!alive) return;
 
-        const mappedGolfers = (golfers ?? []).map((golfer) => {
-          const statusRaw = String(golfer?.accountStatus || "").toLowerCase();
-          const isActive = statusRaw === "active";
-          return {
-            _id: golfer?._id,
-            fullName:
-              golfer?.fullName || golfer?.userName || golfer?.email || "Unknown",
-            email: golfer?.email || "N/A",
-            bio: golfer?.bio || "N/A",
-            address: golfer?.address || "N/A",
-            role: golfer?.role || "golfer",
-            status: isActive ? "Active" : "Banned",
-            isActive,
-            accountStatus: golfer?.accountStatus,
-            profileImageUrl: golfer?.profileImageUrl,
-            coverImageUrl: golfer?.coverImageUrl,
-            userName: golfer?.userName,
-            phoneNumber: golfer?.phoneNumber,
+        if (userResponse?.role === "golf_club") {
+          const club = (clubs ?? []).find(
+            (c) =>
+              String(c?.clubUserId) === String(id) ||
+              String(c?._id) === String(id),
+          );
+
+          const merged = {
+            ...userResponse,
+            clubId: club?._id,
+            clubName: club?.name || "N/A",
+            email: club?.clubEmail || userResponse.email || "N/A",
+            address: club?.address || userResponse.address || "N/A",
+            country: club?.country || "N/A",
+            state: club?.city || "N/A",
+            ghinNumber: club?.ghinNumber || "N/A",
           };
-        });
 
-        const mappedClubs = (clubs ?? []).map((club) => ({
-          _id: club?.clubUserId || club?._id,
-          clubId: club?._id,
-          fullName: club?.name || "Unknown Club",
-          email: club?.clubEmail || "N/A",
-          bio: "N/A",
-          address: club?.address || "N/A",
-          role: "golf_club",
-          status: "Active",
-          isActive: true,
-          accountStatus: "active",
-          profileImageUrl: club?.profileImageUrl || null,
-          coverImageUrl: club?.coverImageUrl || null,
-          userName: club?.name || "N/A",
-          phoneNumber: "N/A",
-          ghinNumber: club?.ghinNumber || "N/A",
-          clubName: club?.name || "N/A",
-          country: club?.country || "N/A",
-          state: club?.city || "N/A",
-        }));
+          setUser(merged);
+          setIsBanned(
+            String(merged?.accountStatus || "").toLowerCase() !== "active",
+          );
+          return;
+        }
 
-        const allUsers = [...mappedGolfers, ...mappedClubs];
-        const found = allUsers.find((item) => String(item._id) === String(id));
-
-        setUser(found || null);
-        setIsBanned(found?.status === "Banned");
+        const statusRaw = String(userResponse?.accountStatus || "").toLowerCase();
+        setUser(userResponse);
+        setIsBanned(statusRaw !== "active");
       } catch (err) {
         if (!alive) return;
         setError(err);
@@ -164,7 +145,10 @@ const ViewUser = () => {
     avatar:
       user.profileImageUrl ||
       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-    isActive: user.status === "Banned" ? "Banned" : "Active",
+    isActive:
+      String(user.accountStatus || "").toLowerCase() === "active"
+        ? "Active"
+        : "Banned",
     country: user.country || "N/A",
     state: user.state || "N/A",
     handicapIndex: user.handicapIndex || "N/A",
