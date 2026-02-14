@@ -6,6 +6,7 @@ export const API_PATHS = {
   clubs: {
     list: "/golf-clubs",
     listGolfers: "/golf-clubs/golfers",
+    exportUsers: "/golf-clubs/export/users",
     roles: (clubId) => `/golf-clubs/${clubId}/roles`,
     profileImage: (clubId) => `/golf-clubs/${clubId}/profile-image`,
     coverImage: (clubId) => `/golf-clubs/${clubId}/cover-image`,
@@ -14,6 +15,7 @@ export const API_PATHS = {
   users: {
     profileImage: "/user/profile/image-upload",
     updateStatus: (userId) => `/user/${userId}/status`,
+    get: (userId) => `/user/${userId}`,
     delete: (userId) => `/user/${userId}`,
   },
   notifications: {

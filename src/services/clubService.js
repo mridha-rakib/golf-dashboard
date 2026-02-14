@@ -11,6 +11,38 @@ export const listGolfers = async () => {
   return res.data?.data ?? res.data;
 };
 
+const getFileNameFromDisposition = (contentDisposition) => {
+  if (!contentDisposition) return "users-export.xlsx";
+
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1].trim());
+  }
+
+  const quotedMatch = contentDisposition.match(/filename=\"([^\"]+)\"/i);
+  if (quotedMatch?.[1]) {
+    return quotedMatch[1].trim();
+  }
+
+  const plainMatch = contentDisposition.match(/filename=([^;]+)/i);
+  if (plainMatch?.[1]) {
+    return plainMatch[1].replace(/\"/g, "").trim();
+  }
+
+  return "users-export.xlsx";
+};
+
+export const exportUsersExcel = async () => {
+  const res = await http.get(API_PATHS.clubs.exportUsers, {
+    responseType: "blob",
+  });
+
+  return {
+    blob: res.data,
+    fileName: getFileNameFromDisposition(res.headers?.["content-disposition"]),
+  };
+};
+
 export const fetchClubRoles = async (clubId) => {
   const res = await http.get(API_PATHS.clubs.roles(clubId));
   return res.data?.data ?? res.data;
@@ -60,6 +92,7 @@ export const deleteClub = async (clubId) => {
 export default {
   listClubs,
   listGolfers,
+  exportUsersExcel,
   fetchClubRoles,
   updateClubRoles,
   createClub,
